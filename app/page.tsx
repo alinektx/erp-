@@ -74,20 +74,21 @@ export default function PDVPage() {
   const [copied, setCopied] = useState(false);
 
   // --- Logic ---
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch('/api/products');
-        const data = await res.json();
-        setProducts(data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
+  const fetchProducts = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -147,17 +148,42 @@ export default function PDVPage() {
     setShowCancelModal(false);
   };
 
-  const confirmSale = React.useCallback(() => {
-    if (!paymentMethod) return;
+  const confirmSale = React.useCallback(async () => {
+    if (!paymentMethod || cart.length === 0) return;
+    
     setIsFinished(true);
-    setTimeout(() => {
-      setCart([]);
-      setDiscount(0);
-      setPaymentMethod(null);
-      setShowPaymentModal(false);
+    
+    try {
+      const response = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cart,
+          totalAmount: total,
+          paymentMethod: paymentMethod
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao salvar venda');
+      }
+
+      // Aguarda um pouco para mostrar a animação de sucesso
+      setTimeout(() => {
+        setCart([]);
+        setDiscount(0);
+        setPaymentMethod(null);
+        setShowPaymentModal(false);
+        setIsFinished(false);
+        // Recarrega os produtos para atualizar o estoque na tela
+        fetchProducts();
+      }, 2000);
+    } catch (error) {
+      console.error('Erro ao finalizar venda:', error);
+      alert('Erro ao processar venda. Por favor, tente novamente.');
       setIsFinished(false);
-    }, 2000);
-  }, [paymentMethod]);
+    }
+  }, [paymentMethod, cart, total, fetchProducts]);
 
   const applyDiscount = React.useCallback(() => {
     setShowDiscountModal(true);

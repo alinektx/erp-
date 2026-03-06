@@ -1,73 +1,148 @@
 import { NextResponse } from 'next/server';
-
-// In-memory product storage for demo purposes
-// In a real app, this would be a database
-let products = [
-  { id: '1', name: 'Coca-Cola 350ml', price: 5.50, cost: 2.50, stock: 50, minStock: 10, maxStock: 100, category: 'Bebidas', sku: '789123456001', image: 'https://picsum.photos/seed/coke/200' },
-  { id: '2', name: 'Água Mineral 500ml', price: 3.00, cost: 1.00, stock: 100, minStock: 20, maxStock: 200, category: 'Bebidas', sku: '789123456002', image: 'https://picsum.photos/seed/water/200' },
-  { id: '3', name: 'Chocolate Barra 90g', price: 7.90, cost: 4.00, stock: 30, minStock: 5, maxStock: 50, category: 'Doces', sku: '789123456003', image: 'https://picsum.photos/seed/chocolate/200' },
-  { id: '4', name: 'Batata Chips 150g', price: 12.50, cost: 6.00, stock: 40, minStock: 10, maxStock: 80, category: 'Salgados', sku: '789123456004', image: 'https://picsum.photos/seed/chips/200' },
-  { id: '5', name: 'Suco de Laranja 1L', price: 15.00, cost: 8.00, stock: 25, minStock: 5, maxStock: 40, category: 'Bebidas', sku: '789123456005', image: 'https://picsum.photos/seed/orange/200' },
-  { id: '6', name: 'Café Espresso', price: 4.50, cost: 1.50, stock: 200, minStock: 50, maxStock: 500, category: 'Bebidas', sku: '789123456006', image: 'https://picsum.photos/seed/coffee/200' },
-  { id: '7', name: 'Pão de Queijo Un.', price: 2.50, cost: 0.80, stock: 150, minStock: 30, maxStock: 300, category: 'Salgados', sku: '789123456007', image: 'https://picsum.photos/seed/cheese/200' },
-  { id: '8', name: 'Sanduíche Natural', price: 18.90, cost: 9.00, stock: 20, minStock: 5, maxStock: 30, category: 'Lanches', sku: '789123456008', image: 'https://picsum.photos/seed/sandwich/200' },
-];
+import { getSupabase } from '@/lib/supabase';
 
 export async function GET() {
-  return NextResponse.json(products);
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Map snake_case to camelCase for the frontend
+    const products = data.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      cost: p.cost,
+      stock: p.stock,
+      minStock: p.min_stock,
+      maxStock: p.max_stock,
+      category: p.category,
+      sku: p.sku,
+      image: p.image
+    }));
+
+    return NextResponse.json(products);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Erro de configuração do banco de dados' }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
-  const product = await req.json();
-  const newProduct = {
-    ...product,
-    id: Math.random().toString(36).substr(2, 9),
-    price: Number(product.price),
-    cost: Number(product.cost || 0),
-    stock: Number(product.stock || 0),
-    minStock: Number(product.minStock || 0),
-    maxStock: Number(product.maxStock || 0),
-  };
-  products.push(newProduct);
-  return NextResponse.json(newProduct);
+  try {
+    const supabase = getSupabase();
+    const product = await req.json();
+    
+    const { data, error } = await supabase
+      .from('products')
+      .insert([{
+        name: product.name,
+        price: Number(product.price),
+        cost: Number(product.cost || 0),
+        stock: Number(product.stock || 0),
+        min_stock: Number(product.minStock || 0),
+        max_stock: Number(product.maxStock || 0),
+        category: product.category,
+        sku: product.sku,
+        image: product.image
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const formattedPost = {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      cost: data.cost,
+      stock: data.stock,
+      minStock: data.min_stock,
+      maxStock: data.max_stock,
+      category: data.category,
+      sku: data.sku,
+      image: data.image
+    };
+
+    return NextResponse.json(formattedPost);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Erro de configuração do banco de dados' }, { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {
-  const product = await req.json();
-  products = products.map(p => p.id === product.id ? { 
-    ...product, 
-    price: Number(product.price),
-    cost: Number(product.cost || 0),
-    stock: Number(product.stock || 0),
-    minStock: Number(product.minStock || 0),
-    maxStock: Number(product.maxStock || 0),
-  } : p);
-  return NextResponse.json(product);
+  try {
+    const supabase = getSupabase();
+    const product = await req.json();
+    
+    const { data, error } = await supabase
+      .from('products')
+      .update({
+        name: product.name,
+        price: Number(product.price),
+        cost: Number(product.cost || 0),
+        stock: Number(product.stock || 0),
+        min_stock: Number(product.minStock || 0),
+        max_stock: Number(product.maxStock || 0),
+        category: product.category,
+        sku: product.sku,
+        image: product.image
+      })
+      .eq('id', product.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const formattedPut = {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      cost: data.cost,
+      stock: data.stock,
+      minStock: data.min_stock,
+      maxStock: data.max_stock,
+      category: data.category,
+      sku: data.sku,
+      image: data.image
+    };
+
+    return NextResponse.json(formattedPut);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Erro de configuração do banco de dados' }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  
-  if (!id) {
-    return NextResponse.json({ success: false, error: 'ID não fornecido' }, { status: 400 });
-  }
+  try {
+    const supabase = getSupabase();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID não fornecido' }, { status: 400 });
+    }
 
-  console.log('Tentando excluir produto com ID:', id);
-  const initialCount = products.length;
-  
-  // Garantir que a comparação seja entre strings e remover possíveis espaços
-  const targetId = id.trim();
-  products = products.filter(p => String(p.id).trim() !== targetId);
-  
-  const finalCount = products.length;
-  const deleted = initialCount > finalCount;
-  
-  console.log(`Produtos antes: ${initialCount}, Produtos depois: ${finalCount}, Excluído: ${deleted}`);
-  
-  if (!deleted) {
-    return NextResponse.json({ success: false, error: 'Produto não encontrado no servidor' }, { status: 404 });
-  }
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
 
-  return NextResponse.json({ success: true, deleted: true });
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, deleted: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Erro de configuração do banco de dados' }, { status: 500 });
+  }
 }

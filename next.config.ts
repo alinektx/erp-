@@ -53,6 +53,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'carrefourbrfood.vtexassets.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   output: 'standalone',
