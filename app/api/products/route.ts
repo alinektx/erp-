@@ -48,10 +48,26 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
+  
+  if (!id) {
+    return NextResponse.json({ success: false, error: 'ID não fornecido' }, { status: 400 });
+  }
+
   console.log('Tentando excluir produto com ID:', id);
   const initialCount = products.length;
-  products = products.filter(p => p.id !== id);
+  
+  // Garantir que a comparação seja entre strings e remover possíveis espaços
+  const targetId = id.trim();
+  products = products.filter(p => String(p.id).trim() !== targetId);
+  
   const finalCount = products.length;
-  console.log(`Produtos antes: ${initialCount}, Produtos depois: ${finalCount}`);
-  return NextResponse.json({ success: true, deleted: initialCount > finalCount });
+  const deleted = initialCount > finalCount;
+  
+  console.log(`Produtos antes: ${initialCount}, Produtos depois: ${finalCount}, Excluído: ${deleted}`);
+  
+  if (!deleted) {
+    return NextResponse.json({ success: false, error: 'Produto não encontrado no servidor' }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true, deleted: true });
 }

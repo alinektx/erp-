@@ -127,21 +127,37 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    console.log('Iniciando exclusão do produto:', id);
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Solicitando exclusão do produto ID:', id);
+    
+    if (!id) {
+      alert('Erro: ID do produto não encontrado.');
+      return;
+    }
+
     if (confirm('Tem certeza que deseja excluir este produto?')) {
       try {
-        const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/products?id=${id}`, { 
+          method: 'DELETE',
+          headers: { 'Accept': 'application/json' }
+        });
+        
         const data = await res.json();
-        console.log('Resposta da exclusão:', data);
+        console.log('Resultado da exclusão no servidor:', data);
+        
         if (res.ok && data.success) {
-          fetchProducts();
+          // Atualiza a lista local removendo o produto imediatamente para feedback instantâneo
+          setProducts(prev => prev.filter(p => p.id !== id));
+          console.log('Produto removido da lista local.');
         } else {
-          alert('Erro ao excluir produto: ' + (data.error || 'Desconhecido'));
+          alert('Erro ao excluir: ' + (data.error || 'O servidor não permitiu a exclusão.'));
         }
       } catch (error) {
-        console.error('Error deleting product:', error);
-        alert('Erro de conexão ao excluir produto.');
+        console.error('Falha na requisição de exclusão:', error);
+        alert('Erro de rede: Não foi possível se comunicar com o servidor.');
       }
     }
   };
@@ -226,13 +242,17 @@ export default function ProductsPage() {
                     )}
                     <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
-                        onClick={() => handleOpenModal(product)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOpenModal(product);
+                        }}
                         className="w-8 h-8 bg-white/90 backdrop-blur shadow-sm rounded-full flex items-center justify-center text-zinc-600 hover:text-zinc-900 transition-colors"
                       >
                         <Edit2 size={14} />
                       </button>
                       <button 
-                        onClick={() => handleDelete(product.id)}
+                        onClick={(e) => handleDelete(e, product.id)}
                         className="w-8 h-8 bg-white/90 backdrop-blur shadow-sm rounded-full flex items-center justify-center text-red-500 hover:text-red-600 transition-colors"
                       >
                         <Trash2 size={14} />
